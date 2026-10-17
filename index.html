@@ -536,6 +536,19 @@
   .tax-net-due .invoice-item-card{ background:var(--amber-soft); }
   .tax-net-credit .invoice-item-card{ background:var(--pos-soft); }
   .tax-net-credit .invoice-item-card h4{ color:var(--pos); }
+  /* total TVA déductible : information prioritaire (à reporter sur la déclaration de TVA) */
+  .tax-ded-main{ margin-top:12px; }
+  .tax-ded-main .invoice-item-card{ background:var(--accent-soft); border:1px solid var(--accent); }
+  .tax-ded-main .invoice-item-card h4{ color:var(--accent); }
+  .tax-ded-main .invoice-field-value > span{ font-size:20px; font-weight:800; color:var(--accent); }
+  /* TVA nette : simple information, plus discrète */
+  .tax-ded-exact{ font-size:12px; color:var(--ink-3); margin:6px 4px 0; }
+  .tax-ded-exact strong{ color:var(--ink-2); }
+  .tax-net-info{ margin-top:12px; background:var(--surface-2); border-radius:var(--radius-md); padding:10px 14px; }
+  .tax-net-title{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-3); }
+  .tax-net-info.is-credit .tax-net-title{ color:var(--pos); }
+  .tax-net-amount{ font-size:17px; font-weight:700; color:var(--ink-2); margin-top:4px; }
+  .tax-net-detail{ font-size:12px; color:var(--ink-3); margin-top:2px; }
 
   .toast-stack{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:40; display:flex; flex-direction:column; gap:8px; align-items:center; }
   .toast{ background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:999px; font-size:13px; box-shadow:var(--shadow-lg); opacity:0; transform:translateY(6px); transition:all .18s ease; }
@@ -859,8 +872,8 @@
         <label>Type de dossier</label>
         <div class="radio-group" id="typeGroup">
           <label><input type="radio" name="type" value="NORMAL" checked><span>Normal</span></label>
+          <label><input type="radio" name="type" value="APPORTEUR"><span>VousFinancer</span></label>
           <label><input type="radio" name="type" value="PRIME"><span>Prime</span></label>
-          <label><input type="radio" name="type" value="APPORTEUR"><span>Apporteur</span></label>
         </div>
       </div>
       <div class="form-field full" id="partenaireField" style="display:none;">
@@ -2542,13 +2555,29 @@
     var totalDed = state.depenses.reduce(function(sum, d){ return sum + depenseDeduction(d); }, 0);
     totalDed = Math.round(totalDed * 100) / 100;
     var t = taxSelectionTotals();
-    var net = Math.round((t.tva - totalDed) * 100) / 100;
-    var isCredit = net < 0;
-    var netLabel = isCredit ? 'Crédit de TVA (rien à payer ce mois-ci)' : 'TVA nette à déclarer';
+    // Demandé par Séb (17/10/2026, repris de son app) : le total de TVA déductible est l'info à reporter
+    // sur la déclaration de TVA → carte principale, copiable. La déclaration se fait
+    // à l'euro le plus proche (74,27 → 74 ; 74,55 → 75), donc le chiffre affiché et
+    // copié est arrondi à l'euro ; le total exact reste indiqué en petit.
+    // La TVA nette est une simple information de contrôle (pas de bouton Copier),
+    // calculée comme sur le formulaire de déclaration : base HT arrondie à l'euro ×
+    // taux de TVA, arrondi à l'euro, moins la TVA déductible arrondie à l'euro.
+    var nb = state.depenses.length;
+    var dedEuro = Math.round(totalDed);
+    var baseHTEuro = Math.round(t.totalHT);
+    var tvaBruteEuro = Math.round(baseHTEuro * state.settings.tva);
+    var netEuro = tvaBruteEuro - dedEuro;
+    var netIsCredit = netEuro < 0;
+    var tauxTxt = String(Math.round(state.settings.tva*10000)/100).replace('.', ',');
     el.innerHTML =
-      '<div class="tax-total-line"><span>Total TVA déductible ('+state.depenses.length+' dépense'+(state.depenses.length>1?'s':'')+')</span><span>-'+fixed2Fr(totalDed)+' €</span></div>' +
-      '<div class="'+(isCredit?'tax-net-credit':'tax-net-due')+'">' +
-        invoiceFieldCard(netLabel, [{ label: 'Montant', value: fixed2Fr(Math.abs(net)) }]) +
+      '<div class="tax-ded-main">' +
+        invoiceFieldCard('TVA déductible à déclarer ('+nb+' dépense'+(nb>1?'s':'')+')', [{ label: 'Montant à reporter (arrondi à l\'euro)', value: String(dedEuro) }]) +
+        '<div class="tax-ded-exact">Total exact : '+fixed2Fr(totalDed)+' € → arrondi à l\'euro le plus proche : <strong>'+dedEuro+' €</strong></div>' +
+      '</div>' +
+      '<div class="tax-net-info'+(netIsCredit?' is-credit':'')+'">' +
+        '<div class="tax-net-title">Pour vérifier ta déclaration — '+(netIsCredit ? 'crédit de TVA (rien à payer)' : 'TVA nette à payer')+'</div>' +
+        '<div class="tax-net-amount">'+formatThousands(Math.abs(netEuro))+' €</div>' +
+        '<div class="tax-net-detail">Base HT '+formatThousands(baseHTEuro)+' € × '+tauxTxt+' % = '+formatThousands(tvaBruteEuro)+' € de TVA collectée − '+formatThousands(dedEuro)+' € de TVA déductible</div>' +
       '</div>';
     wireCopyButtons(el);
   }
