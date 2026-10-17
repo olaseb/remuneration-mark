@@ -7,7 +7,7 @@
 //   visible dans toute app web Firebase) ; la vraie protection, ce sont les règles
 //   Firestore qui n'autorisent que le compte de Mark.
 window.FIREBASE_CONFIG = {
-  apiKey: "COLLE_ICI_LA_CLE_API",
+  apiKey: "AIzaSyBU9OLRqkkzUxAk948IuTDv1RxcwuDPyu0",
   authDomain: "remuneration-mark.firebaseapp.com",
   projectId: "remuneration-mark",
   storageBucket: "remuneration-mark.firebasestorage.app",
